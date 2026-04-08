@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 
 app = Flask(__name__)
@@ -12,6 +12,9 @@ users = []
 task_counter = 1
 user_counter = 1
 
+@app.route("/")
+def frontend():
+    return send_file('index.html', as_attachment=False)
 
 # ─────────────────────────────────────────────
 #  TASKS ENDPOINTS
