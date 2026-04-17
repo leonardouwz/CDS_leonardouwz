@@ -1,0 +1,945 @@
+{
+  "info": {
+    "_postman_id": "d9a1ff3c-7b2e-48c1-a3e5-9f34501bc8d4",
+    "name": "Flask Session 02 – Tasks & Users (CRUD + Stretch Goals)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "GET root",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://127.0.0.1:5000/",
+              "protocol": "http",
+              "host": ["127", "0", "0", "1"],
+              "port": "5000",
+              "path": [""]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET healthz",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://127.0.0.1:5000/healthz",
+              "protocol": "http",
+              "host": ["127", "0", "0", "1"],
+              "port": "5000",
+              "path": ["healthz"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Tasks – CRUD básico",
+      "item": [
+        {
+          "name": "GET all tasks",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://127.0.0.1:5000/tasks",
+              "protocol": "http",
+              "host": ["127", "0", "0", "1"],
+              "port": "5000",
+              "path": ["tasks"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET task by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://127.0.0.1:5000/tasks/1",
+              "protocol": "http",
+              "host": ["127", "0", "0", "1"],
+              "port": "5000",
+              "path": ["tasks", "1"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET task by ID (no existe – debe dar 404)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://127.0.0.1:5000/tasks/9999",
+              "protocol": "http",
+              "host": ["127", "0", "0", "1"],
+              "port": "5000",
+              "path": ["tasks", "9999"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST create task",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Estudiar Flask con SQLAlchemy\"\n}"
+            },
+            "url": {
+              "raw": "http://127.0.0.1:5000/tasks",
+              "protocol": "http",
+              "host": ["127", "0", "0", "1"],
+              "port": "5000",
+              "path": ["tasks"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST create task con user_id",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Tarea asignada a user 1\",\n  \"user_id\": 1\n}"
+            },
+            "url": {
+              "raw": "http://127.0.0.1:5000/tasks",
+              "protocol": "http",
+              "host": ["127", "0", "0", "1"],
+              "port": "5000",
+              "path": ["tasks"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST create task ya completada",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Configurar Docker\",\n  \"done\": true\n}"
+            },
+            "url": {
+              "raw": "http://127.0.0.1:5000/tasks",
+              "protocol": "http",
+              "host": ["127", "0", "0", "1"],
+              "port": "5000",
+              "path": ["tasks"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST create task (content vacío – debe dar 400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"\"\n}"
+            },
+            "url": {
+              "raw": "http://127.0.0.1:5000/tasks",
+              "protocol": "http",
+              "host": ["127", "0", "0", "1"],
+              "port": "5000",
+              "path": ["tasks"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST create task (user inexistente – debe dar 404)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Tarea huérfana\",\n  \"user_id\": 9999\n}"
+            },
+            "url": {
+              "raw": "http://127.0.0.1:5000/tasks",
+              "protocol": "http",
+              "host": ["127", "0", "0", "1"],
+              "port": "5000",
+              "path": ["tasks"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "PUT update task content",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Estudiar Flask a fondo\"\n}"
+            },
+            "url": {
+              "raw": "http://127.0.0.1:5000/tasks/1",
+              "protocol": "http",
+              "host": ["127", "0", "0", "1"],
+              "port": "5000",
+              "path": ["tasks", "1"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "PUT mark task as done",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"done\": true\n}"
+            },
+            "url": {
+              "raw": "http://127.0.0.1:5000/tasks/1",
+              "protocol": "http",
+              "host": ["127", "0", "0", "1"],
+              "port": "5000",
+              "path": ["tasks", "1"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "PUT update task content + done + user_id",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Tarea actualizada completa\",\n  \"done\": true,\n  \"user_id\": 1\n}"
+            },
+            "url": {
+              "raw": "http://127.0.0.1:5000/tasks/1",
+              "protocol": "http",
+              "host": ["127", "0", "0", "1"],
+              "port": "5000",
+              "path": ["tasks", "1"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "PUT update task (content vacío – debe dar 400)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"   \"\n}"
+            },
+            "url": {
+              "raw": "http://127.0.0.1:5000/tasks/1",
+              "protocol": "http",
+              "host": ["127", "0", "0", "1"],
+              "port": "5000",
+              "path": ["tasks", "1"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE task (soft delete)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "http://127.0.0.1:5000/tasks/1",
+              "protocol": "http",
+              "host": ["127", "0", "0", "1"],
+              "port": "5000",
+              "path": ["tasks", "1"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Tasks – Filtros",
+      "item": [
+        {
+          "name": "GET tasks done",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://127.0.0.1:5000/tasks/done",
+              "protocol": "http",
+              "host": ["127", "0", "0", "1"],
+              "port": "5000",
+              "path": ["tasks", "done"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET tasks pending",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://127.0.0.1:5000/tasks/pending",
+              "protocol": "http",
+              "host": ["127", "0", "0", "1"],
+              "port": "5000",
+              "path": ["tasks", "pending"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET tasks filtradas por done=true",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://127.0.0.1:5000/tasks?done=true",
+              "protocol": "http",
+              "host": ["127", "0", "0", "1"],
+              "port": "5000",
+              "path": ["tasks"],
+              "query": [
+                { "key": "done", "value": "true" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET tasks filtradas por user_id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://127.0.0.1:5000/tasks?user_id=1",
+              "protocol": "http",
+              "host": ["127", "0", "0", "1"],
+              "port": "5000",
+              "path": ["tasks"],
+              "query": [
+                { "key": "user_id", "value": "1" }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Tasks – Paginación (Stretch Goal 1)",
+      "item": [
+        {
+          "name": "GET tasks página 1 (5 por página)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://127.0.0.1:5000/tasks?page=1&limit=5",
+              "protocol": "http",
+              "host": ["127", "0", "0", "1"],
+              "port": "5000",
+              "path": ["tasks"],
+              "query": [
+                { "key": "page",  "value": "1" },
+                { "key": "limit", "value": "5" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET tasks página 2 (5 por página)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://127.0.0.1:5000/tasks?page=2&limit=5",
+              "protocol": "http",
+              "host": ["127", "0", "0", "1"],
+              "port": "5000",
+              "path": ["tasks"],
+              "query": [
+                { "key": "page",  "value": "2" },
+                { "key": "limit", "value": "5" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET tasks página 1 (20 por página – default)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://127.0.0.1:5000/tasks?page=1&limit=20",
+              "protocol": "http",
+              "host": ["127", "0", "0", "1"],
+              "port": "5000",
+              "path": ["tasks"],
+              "query": [
+                { "key": "page",  "value": "1" },
+                { "key": "limit", "value": "20" }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Tasks – Búsqueda (Stretch Goal 2)",
+      "item": [
+        {
+          "name": "GET tasks search por query",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://127.0.0.1:5000/tasks?query=flask",
+              "protocol": "http",
+              "host": ["127", "0", "0", "1"],
+              "port": "5000",
+              "path": ["tasks"],
+              "query": [
+                { "key": "query", "value": "flask" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET tasks search + paginación",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://127.0.0.1:5000/tasks?query=docker&page=1&limit=5",
+              "protocol": "http",
+              "host": ["127", "0", "0", "1"],
+              "port": "5000",
+              "path": ["tasks"],
+              "query": [
+                { "key": "query", "value": "docker" },
+                { "key": "page",  "value": "1" },
+                { "key": "limit", "value": "5" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET tasks search + done + user_id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://127.0.0.1:5000/tasks?query=estudiar&done=false&user_id=1",
+              "protocol": "http",
+              "host": ["127", "0", "0", "1"],
+              "port": "5000",
+              "path": ["tasks"],
+              "query": [
+                { "key": "query",   "value": "estudiar" },
+                { "key": "done",    "value": "false" },
+                { "key": "user_id", "value": "1" }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Tasks – Soft Delete (Stretch Goal 3)",
+      "item": [
+        {
+          "name": "DELETE task (soft delete)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "http://127.0.0.1:5000/tasks/1",
+              "protocol": "http",
+              "host": ["127", "0", "0", "1"],
+              "port": "5000",
+              "path": ["tasks", "1"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE task (hard delete – permanente)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "http://127.0.0.1:5000/tasks/1?hard=true",
+              "protocol": "http",
+              "host": ["127", "0", "0", "1"],
+              "port": "5000",
+              "path": ["tasks", "1"],
+              "query": [
+                { "key": "hard", "value": "true" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET tasks deleted (ver eliminadas)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://127.0.0.1:5000/tasks/deleted",
+              "protocol": "http",
+              "host": ["127", "0", "0", "1"],
+              "port": "5000",
+              "path": ["tasks", "deleted"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST restore task",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "http://127.0.0.1:5000/tasks/1/restore",
+              "protocol": "http",
+              "host": ["127", "0", "0", "1"],
+              "port": "5000",
+              "path": ["tasks", "1", "restore"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST restore task (no eliminada – debe dar 404)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "http://127.0.0.1:5000/tasks/2/restore",
+              "protocol": "http",
+              "host": ["127", "0", "0", "1"],
+              "port": "5000",
+              "path": ["tasks", "2", "restore"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Users – CRUD (Stretch Goal 4)",
+      "item": [
+        {
+          "name": "GET all users",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://127.0.0.1:5000/users",
+              "protocol": "http",
+              "host": ["127", "0", "0", "1"],
+              "port": "5000",
+              "path": ["users"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET user by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://127.0.0.1:5000/users/1",
+              "protocol": "http",
+              "host": ["127", "0", "0", "1"],
+              "port": "5000",
+              "path": ["users", "1"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET user by ID con sus tasks",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://127.0.0.1:5000/users/1?include_tasks=true",
+              "protocol": "http",
+              "host": ["127", "0", "0", "1"],
+              "port": "5000",
+              "path": ["users", "1"],
+              "query": [
+                { "key": "include_tasks", "value": "true" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET user by ID (no existe – debe dar 404)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://127.0.0.1:5000/users/9999",
+              "protocol": "http",
+              "host": ["127", "0", "0", "1"],
+              "port": "5000",
+              "path": ["users", "9999"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST create user",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"vicente\",\n  \"email\": \"vicente@example.com\"\n}"
+            },
+            "url": {
+              "raw": "http://127.0.0.1:5000/users",
+              "protocol": "http",
+              "host": ["127", "0", "0", "1"],
+              "port": "5000",
+              "path": ["users"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST create user (sin email – debe dar 400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"sinEmail\"\n}"
+            },
+            "url": {
+              "raw": "http://127.0.0.1:5000/users",
+              "protocol": "http",
+              "host": ["127", "0", "0", "1"],
+              "port": "5000",
+              "path": ["users"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST create user (username duplicado – debe dar 409)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"vicente\",\n  \"email\": \"otro@example.com\"\n}"
+            },
+            "url": {
+              "raw": "http://127.0.0.1:5000/users",
+              "protocol": "http",
+              "host": ["127", "0", "0", "1"],
+              "port": "5000",
+              "path": ["users"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "PUT update user",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"vicente_updated\",\n  \"email\": \"vicente_new@example.com\"\n}"
+            },
+            "url": {
+              "raw": "http://127.0.0.1:5000/users/1",
+              "protocol": "http",
+              "host": ["127", "0", "0", "1"],
+              "port": "5000",
+              "path": ["users", "1"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "PUT update solo username",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"vicentemq\"\n}"
+            },
+            "url": {
+              "raw": "http://127.0.0.1:5000/users/1",
+              "protocol": "http",
+              "host": ["127", "0", "0", "1"],
+              "port": "5000",
+              "path": ["users", "1"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE user (soft delete)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "http://127.0.0.1:5000/users/1",
+              "protocol": "http",
+              "host": ["127", "0", "0", "1"],
+              "port": "5000",
+              "path": ["users", "1"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE user + sus tasks (cascade)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "http://127.0.0.1:5000/users/1?cascade=true",
+              "protocol": "http",
+              "host": ["127", "0", "0", "1"],
+              "port": "5000",
+              "path": ["users", "1"],
+              "query": [
+                { "key": "cascade", "value": "true" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE user (hard delete – permanente)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "http://127.0.0.1:5000/users/1?hard=true",
+              "protocol": "http",
+              "host": ["127", "0", "0", "1"],
+              "port": "5000",
+              "path": ["users", "1"],
+              "query": [
+                { "key": "hard", "value": "true" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST restore user",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "http://127.0.0.1:5000/users/1/restore",
+              "protocol": "http",
+              "host": ["127", "0", "0", "1"],
+              "port": "5000",
+              "path": ["users", "1", "restore"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST restore user (no eliminado – debe dar 404)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "http://127.0.0.1:5000/users/2/restore",
+              "protocol": "http",
+              "host": ["127", "0", "0", "1"],
+              "port": "5000",
+              "path": ["users", "2", "restore"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Users – Paginación y Búsqueda",
+      "item": [
+        {
+          "name": "GET users página 1",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://127.0.0.1:5000/users?page=1&limit=5",
+              "protocol": "http",
+              "host": ["127", "0", "0", "1"],
+              "port": "5000",
+              "path": ["users"],
+              "query": [
+                { "key": "page",  "value": "1" },
+                { "key": "limit", "value": "5" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET users search por username o email",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://127.0.0.1:5000/users?query=vicente",
+              "protocol": "http",
+              "host": ["127", "0", "0", "1"],
+              "port": "5000",
+              "path": ["users"],
+              "query": [
+                { "key": "query", "value": "vicente" }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Users – Tasks del usuario",
+      "item": [
+        {
+          "name": "GET tasks de user 1",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://127.0.0.1:5000/users/1/tasks",
+              "protocol": "http",
+              "host": ["127", "0", "0", "1"],
+              "port": "5000",
+              "path": ["users", "1", "tasks"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET tasks de user 1 con paginación",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://127.0.0.1:5000/users/1/tasks?page=1&limit=5",
+              "protocol": "http",
+              "host": ["127", "0", "0", "1"],
+              "port": "5000",
+              "path": ["users", "1", "tasks"],
+              "query": [
+                { "key": "page",  "value": "1" },
+                { "key": "limit", "value": "5" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET tasks de user 1 con búsqueda",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://127.0.0.1:5000/users/1/tasks?query=flask",
+              "protocol": "http",
+              "host": ["127", "0", "0", "1"],
+              "port": "5000",
+              "path": ["users", "1", "tasks"],
+              "query": [
+                { "key": "query", "value": "flask" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET tasks de user inexistente (debe dar 404)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://127.0.0.1:5000/users/9999/tasks",
+              "protocol": "http",
+              "host": ["127", "0", "0", "1"],
+              "port": "5000",
+              "path": ["users", "9999", "tasks"]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
