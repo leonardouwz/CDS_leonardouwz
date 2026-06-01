@@ -1,0 +1,223 @@
+{
+  "info": {
+    "name": "Notes API - OAuth2 Google",
+    "_postman_id": "notes-api-session-5-base",
+    "description": "## Requisito previo\n\n1. Corre el servidor: `python run.py` dentro de `session5/`\n2. Abre **http://localhost:5000/login** en el navegador y completa el login con Google\n3. Abre DevTools (F12) → Application → Cookies → localhost → copia el valor de la cookie `session`\n4. En Postman: clic en **Cookies** (arriba a la derecha) → agrega dominio `localhost` → agrega la cookie `session` con ese valor\n\nTodos los requests siguientes usarán esa cookie automáticamente.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:5000",
+      "type": "string"
+    },
+    {
+      "key": "note_id",
+      "value": "1",
+      "type": "string",
+      "description": "Cambia este valor al ID de la nota que quieras borrar"
+    }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "GET /login  (abrir en navegador)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/login",
+              "host": ["{{base_url}}"],
+              "path": ["login"]
+            },
+            "description": "Abre http://localhost:5000/login en el navegador.\n\nEl servidor genera un `state` aleatorio (proteccion CSRF) y redirige a Google. Tras el login, Google vuelve al callback, se intercambia el code por tokens (server-to-server con client_secret), se verifica la firma del id_token y se emite la cookie de sesion Flask."
+          },
+          "response": []
+        },
+        {
+          "name": "POST /dev/login  (solo debug=True)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"tu@gmail.com\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/dev/login",
+              "host": ["{{base_url}}"],
+              "path": ["dev", "login"]
+            },
+            "description": "Crea sesion directamente sin pasar por Google. Solo disponible con debug=True.\n\nEl usuario debe existir en la DB (haber hecho login real al menos una vez).\n\nRespuesta (200):\n```json\n{\"message\": \"ok\", \"user_id\": 1, \"email\": \"tu@gmail.com\"}\n```"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /me - Perfil del usuario",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/me",
+              "host": ["{{base_url}}"],
+              "path": ["me"]
+            },
+            "description": "Devuelve el perfil del usuario con sesion activa.\n\nRespuesta (200):\n```json\n{\n  \"id\": 1,\n  \"email\": \"tu@gmail.com\",\n  \"name\": \"Tu Nombre\",\n  \"picture\": \"https://...\"\n}\n```\n\nSin sesion -> 401."
+          },
+          "response": []
+        },
+        {
+          "name": "GET /logout",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/logout",
+              "host": ["{{base_url}}"],
+              "path": ["logout"]
+            },
+            "description": "Limpia la sesion del servidor.\n\nRespuesta (200):\n```json\n{\"message\": \"logged out\"}\n```"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Notes",
+      "item": [
+        {
+          "name": "GET /api/notes - Listar notas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/notes",
+              "host": ["{{base_url}}"],
+              "path": ["api", "notes"]
+            },
+            "description": "Lista todas las notas del usuario autenticado. Solo ve sus propias notas.\n\nRespuesta (200):\n```json\n[\n  {\n    \"id\": 1,\n    \"title\": \"Comprar leche\",\n    \"body\": \"2L de avena\",\n    \"created_at\": \"2026-06-01T10:00:00\"\n  }\n]\n```\n\nSin sesion -> 401."
+          },
+          "response": []
+        },
+        {
+          "name": "POST /api/notes - Crear nota",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const body = pm.response.json();",
+                  "    pm.collectionVariables.set('note_id', body.id);",
+                  "    console.log('note_id actualizado a', body.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Comprar leche\",\n  \"body\": \"2L de avena\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/notes",
+              "host": ["{{base_url}}"],
+              "path": ["api", "notes"]
+            },
+            "description": "Crea una nota. `title` obligatorio, `body` opcional.\n\nEl test script guarda el `id` en {{note_id}} automaticamente.\n\nRespuesta (201):\n```json\n{\n  \"id\": 1,\n  \"title\": \"Comprar leche\",\n  \"body\": \"2L de avena\",\n  \"created_at\": \"2026-06-01T10:00:00\"\n}\n```"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /api/notes - Sin title (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"body\": \"Sin titulo, debe fallar con 400\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/notes",
+              "host": ["{{base_url}}"],
+              "path": ["api", "notes"]
+            },
+            "description": "Demuestra validacion de input.\n\nRespuesta (400):\n```json\n{\"error\": \"title is required\"}\n```"
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /api/notes/:id - Borrar nota",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/notes/{{note_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "notes", "{{note_id}}"]
+            },
+            "description": "Borra la nota con el ID en {{note_id}}.\n\nRespuesta: 204 No Content.\n\nSi la nota no existe o es de otro usuario -> 404."
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/notes - Sin sesion (401)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "",
+                "disabled": true,
+                "description": "Cookie deshabilitada para simular usuario no autenticado"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/notes",
+              "host": ["{{base_url}}"],
+              "path": ["api", "notes"]
+            },
+            "description": "Deshabilita la cookie de sesion en Postman antes de ejecutar.\n\nRespuesta (401):\n```json\n{\n  \"error\": \"authentication required\",\n  \"login_url\": \"/login\"\n}\n```"
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
