@@ -2,6 +2,13 @@
 
 REST API de notas personales con autenticación OAuth 2.0 via Google. Cada usuario solo puede ver y gestionar sus propias notas.
 
+## Integrantes
+- Leonardo Pachari Gomez
+- Nicolle Lozano Vega
+- Katherine Saico Ccahuana
+- Elias Manchego Navarro
+- Piero Poblete Andía
+
 ## Stack
 
 - **Flask** — framework web
