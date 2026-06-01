@@ -1,5 +1,11 @@
+import enum
 from datetime import datetime
 from app.extensions import db
+
+
+class Role(str, enum.Enum):
+    user  = "user"
+    admin = "admin"
 
 
 class User(db.Model):
@@ -11,6 +17,7 @@ class User(db.Model):
     name          = db.Column(db.String(255))
     picture_url   = db.Column(db.String(512))
     refresh_token = db.Column(db.String(512))
+    role          = db.Column(db.String(16), default=Role.user, nullable=False)
     created_at    = db.Column(db.DateTime, default=datetime.utcnow)
 
     notes = db.relationship("Note", backref="owner", cascade="all, delete-orphan")

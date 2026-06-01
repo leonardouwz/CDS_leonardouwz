@@ -2,7 +2,7 @@ from functools import wraps
 from flask import Blueprint, request, jsonify, session
 
 from app.extensions import db, limiter
-from app.models import Note
+from app.models import Note, User, Role
 
 api_bp = Blueprint("api", __name__, url_prefix="/api")
 
@@ -15,6 +15,22 @@ def login_required(fn):
                             "login_url": "/login"}), 401
         return fn(*args, **kwargs)
     return wrapper
+
+
+def roles_required(*allowed: str):
+    """Verifica que el usuario autenticado tenga uno de los roles permitidos.
+    Debe aplicarse despues de @login_required."""
+    def decorator(fn):
+        @wraps(fn)
+        def wrapper(*args, **kwargs):
+            user = db.session.get(User, session.get("user_id"))
+            if user is None:
+                return jsonify({"error": "not authenticated"}), 401
+            if user.role not in allowed:
+                return jsonify({"error": "forbidden", "required_role": list(allowed)}), 403
+            return fn(*args, **kwargs)
+        return wrapper
+    return decorator
 
 
 @api_bp.route("/notes", methods=["GET"])
@@ -52,3 +68,14 @@ def delete_note(note_id):
     db.session.delete(note)
     db.session.commit()
     return "", 204
+
+
+@api_bp.route("/admin/notes", methods=["GET"])
+@login_required
+@roles_required(Role.admin)
+def admin_list_all_notes():
+    notes = Note.query.all()
+    return jsonify([
+        {**n.to_dict(), "owner_email": n.owner.email}
+        for n in notes
+    ])
