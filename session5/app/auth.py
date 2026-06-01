@@ -11,10 +11,11 @@ from app.models import User
 
 auth_bp = Blueprint("auth", __name__)
 
-AUTH_URL  = "https://accounts.google.com/o/oauth2/v2/auth"
-TOKEN_URL = "https://oauth2.googleapis.com/token"
-JWKS_URL  = "https://www.googleapis.com/oauth2/v3/certs"
-SCOPE     = "openid email profile"
+AUTH_URL    = "https://accounts.google.com/o/oauth2/v2/auth"
+TOKEN_URL   = "https://oauth2.googleapis.com/token"
+JWKS_URL    = "https://www.googleapis.com/oauth2/v3/certs"
+REFRESH_URL = "https://oauth2.googleapis.com/token"
+SCOPE       = "openid email profile"
 
 
 def _cfg(name):
@@ -33,7 +34,8 @@ def login():
         "redirect_uri":  _cfg("GOOGLE_REDIRECT_URI"),
         "scope":         SCOPE,
         "state":         state,
-        "prompt":        "select_account",
+        "access_type":   "offline",
+        "prompt":        "consent",
     }
     return redirect(f"{AUTH_URL}?{urlencode(params)}")
 
@@ -78,11 +80,40 @@ def callback():
     user.email       = claims["email"]
     user.name        = claims.get("name", "")
     user.picture_url = claims.get("picture", "")
+    if tokens.get("refresh_token"):
+        user.refresh_token = tokens["refresh_token"]
     db.session.commit()
 
     # 5. Issue local session
     session["user_id"] = user.id
     return redirect(url_for("api.list_notes"))
+
+
+def _refresh_access_token(user: User) -> str | None:
+    """Obtiene un nuevo access_token usando el refresh_token almacenado."""
+    if not user.refresh_token:
+        return None
+    resp = requests.post(REFRESH_URL, data={
+        "client_id":     _cfg("GOOGLE_CLIENT_ID"),
+        "client_secret": _cfg("GOOGLE_CLIENT_SECRET"),
+        "refresh_token": user.refresh_token,
+        "grant_type":    "refresh_token",
+    }, timeout=10)
+    if resp.ok:
+        return resp.json().get("access_token")
+    return None
+
+
+@auth_bp.route("/refresh", methods=["POST"])
+def refresh():
+    uid = session.get("user_id")
+    if not uid:
+        return jsonify({"error": "not authenticated"}), 401
+    user = db.session.get(User, uid)
+    new_token = _refresh_access_token(user)
+    if not new_token:
+        return jsonify({"error": "could not refresh — re-login required"}), 401
+    return jsonify({"access_token": new_token})
 
 
 @auth_bp.route("/logout")
