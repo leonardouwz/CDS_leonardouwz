@@ -1,7 +1,7 @@
 from functools import wraps
 from flask import Blueprint, request, jsonify, session
 
-from app.extensions import db
+from app.extensions import db, limiter
 from app.models import Note
 
 api_bp = Blueprint("api", __name__, url_prefix="/api")
@@ -26,6 +26,7 @@ def list_notes():
 
 @api_bp.route("/notes", methods=["POST"])
 @login_required
+@limiter.limit("30/minute")
 def create_note():
     data = request.get_json() or {}
     if not data.get("title"):

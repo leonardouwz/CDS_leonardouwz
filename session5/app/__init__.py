@@ -2,7 +2,7 @@ import os
 from dotenv import load_dotenv
 from flask import Flask
 
-from app.extensions import db
+from app.extensions import db, limiter
 from app.auth import auth_bp
 from app.api import api_bp
 
@@ -16,6 +16,7 @@ def create_app():
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
     db.init_app(app)
+    limiter.init_app(app)
     app.register_blueprint(auth_bp)
     app.register_blueprint(api_bp)
 

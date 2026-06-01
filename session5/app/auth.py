@@ -6,7 +6,7 @@ import jwt
 import requests
 from flask import Blueprint, current_app, redirect, request, session, url_for, jsonify
 
-from app.extensions import db
+from app.extensions import db, limiter
 from app.models import User
 
 auth_bp = Blueprint("auth", __name__)
@@ -22,6 +22,7 @@ def _cfg(name):
 
 
 @auth_bp.route("/login")
+@limiter.limit("10/minute")
 def login():
     state = secrets.token_urlsafe(16)
     session["oauth_state"] = state
