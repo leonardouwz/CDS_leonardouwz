@@ -1,3 +1,4 @@
+import datetime
 import os
 import secrets
 from urllib.parse import urlencode
@@ -11,11 +12,13 @@ from app.models import User
 
 auth_bp = Blueprint("auth", __name__)
 
-AUTH_URL    = "https://accounts.google.com/o/oauth2/v2/auth"
-TOKEN_URL   = "https://oauth2.googleapis.com/token"
-JWKS_URL    = "https://www.googleapis.com/oauth2/v3/certs"
-REFRESH_URL = "https://oauth2.googleapis.com/token"
-SCOPE       = "openid email profile"
+AUTH_URL     = "https://accounts.google.com/o/oauth2/v2/auth"
+TOKEN_URL    = "https://oauth2.googleapis.com/token"
+JWKS_URL     = "https://www.googleapis.com/oauth2/v3/certs"
+REFRESH_URL  = "https://oauth2.googleapis.com/token"
+SCOPE        = "openid email profile"
+JWT_ALGO     = "HS256"
+JWT_LIFETIME = datetime.timedelta(hours=1)
 
 
 def _cfg(name):
@@ -114,6 +117,31 @@ def refresh():
     if not new_token:
         return jsonify({"error": "could not refresh — re-login required"}), 401
     return jsonify({"access_token": new_token})
+
+
+def _mint_jwt(user_id: int) -> str:
+    """Emite un JWT firmado con la SECRET_KEY de la app."""
+    now = datetime.datetime.utcnow()
+    payload = {
+        "sub": str(user_id),
+        "iat": now,
+        "exp": now + JWT_LIFETIME,
+    }
+    return jwt.encode(payload, current_app.config["SECRET_KEY"], algorithm=JWT_ALGO)
+
+
+@auth_bp.route("/api/token", methods=["POST"])
+def issue_token():
+    """Intercambia la sesion activa por un JWT Bearer para clientes API."""
+    uid = session.get("user_id")
+    if not uid:
+        return jsonify({"error": "not authenticated — complete OAuth flow first"}), 401
+    token = _mint_jwt(uid)
+    return jsonify({
+        "access_token": token,
+        "token_type":   "Bearer",
+        "expires_in":   int(JWT_LIFETIME.total_seconds()),
+    })
 
 
 @auth_bp.route("/logout")

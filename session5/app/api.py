@@ -1,29 +1,54 @@
 from functools import wraps
-from flask import Blueprint, request, jsonify, session
+from flask import Blueprint, current_app, request, jsonify, session
+
+import jwt
 
 from app.extensions import db, limiter
 from app.models import Note, User, Role
 
 api_bp = Blueprint("api", __name__, url_prefix="/api")
 
+JWT_ALGO = "HS256"
+
+
+def _user_id_from_request() -> int | None:
+    """Extrae el user_id desde sesion Flask o desde un Bearer JWT."""
+    header = request.headers.get("Authorization", "")
+    if header.startswith("Bearer "):
+        token = header[7:]
+        try:
+            payload = jwt.decode(
+                token,
+                current_app.config["SECRET_KEY"],
+                algorithms=[JWT_ALGO],
+            )
+            return int(payload["sub"])
+        except jwt.ExpiredSignatureError:
+            return None
+        except jwt.InvalidTokenError:
+            return None
+    return session.get("user_id")
+
 
 def login_required(fn):
     @wraps(fn)
     def wrapper(*args, **kwargs):
-        if "user_id" not in session:
+        uid = _user_id_from_request()
+        if uid is None:
             return jsonify({"error": "authentication required",
                             "login_url": "/login"}), 401
+        request.user_id = uid
         return fn(*args, **kwargs)
     return wrapper
 
 
 def roles_required(*allowed: str):
     """Verifica que el usuario autenticado tenga uno de los roles permitidos.
-    Debe aplicarse despues de @login_required."""
+    Debe aplicarse despues de @login_required (que fija request.user_id)."""
     def decorator(fn):
         @wraps(fn)
         def wrapper(*args, **kwargs):
-            user = db.session.get(User, session.get("user_id"))
+            user = db.session.get(User, request.user_id)
             if user is None:
                 return jsonify({"error": "not authenticated"}), 401
             if user.role not in allowed:
@@ -36,7 +61,7 @@ def roles_required(*allowed: str):
 @api_bp.route("/notes", methods=["GET"])
 @login_required
 def list_notes():
-    notes = Note.query.filter_by(user_id=session["user_id"]).all()
+    notes = Note.query.filter_by(user_id=request.user_id).all()
     return jsonify([n.to_dict() for n in notes])
 
 
@@ -49,7 +74,7 @@ def create_note():
         return jsonify({"error": "title is required"}), 400
 
     note = Note(
-        user_id=session["user_id"],
+        user_id=request.user_id,
         title=data["title"],
         body=data.get("body", ""),
     )
@@ -63,7 +88,7 @@ def create_note():
 def delete_note(note_id):
     note = Note.query.filter_by(
         id=note_id,
-        user_id=session["user_id"],
+        user_id=request.user_id,
     ).first_or_404()
     db.session.delete(note)
     db.session.commit()

@@ -1,8 +1,8 @@
 {
   "info": {
-    "name": "Notes API - OAuth2 Google",
-    "_postman_id": "notes-api-session-5-base",
-    "description": "## Requisito previo\n\n1. Corre el servidor: `python run.py` dentro de `session5/`\n2. Abre **http://localhost:5000/login** en el navegador y completa el login con Google\n3. Abre DevTools (F12) → Application → Cookies → localhost → copia el valor de la cookie `session`\n4. En Postman: clic en **Cookies** (arriba a la derecha) → agrega dominio `localhost` → agrega la cookie `session` con ese valor\n\nTodos los requests siguientes usarán esa cookie automáticamente.",
+    "name": "Notes API - OAuth2 + JWT + RBAC",
+    "_postman_id": "notes-api-v2",
+    "description": "## Flujo recomendado\n\n### Autenticación por sesión (navegador)\n1. Abre **http://localhost:5000/login** en el navegador y completa el login con Google\n2. En Postman → **Cookies** (arriba a la derecha) → agrega dominio `localhost` → pega el valor de la cookie `session` que aparece en DevTools (F12 → Application → Cookies)\n3. Ejecuta los requests de la carpeta **3. Notas (Sesión)**\n\n### Autenticación por JWT (clientes API)\n1. Con la sesión activa, ejecuta **POST /api/token** en la carpeta **2. JWT**\n2. El token se guarda automáticamente en la variable `jwt_token`\n3. Ejecuta los requests de la carpeta **4. Notas (JWT Bearer)**\n\n### Login rápido en desarrollo\n- Usa **POST /dev/login** (solo funciona con `debug=True`) para crear sesión sin el navegador",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -15,15 +15,22 @@
       "key": "note_id",
       "value": "1",
       "type": "string",
-      "description": "Cambia este valor al ID de la nota que quieras borrar"
+      "description": "ID de la nota a borrar. Actualiza con el id devuelto por POST /api/notes"
+    },
+    {
+      "key": "jwt_token",
+      "value": "",
+      "type": "string",
+      "description": "Se rellena automáticamente al ejecutar POST /api/token"
     }
   ],
   "item": [
     {
-      "name": "Auth",
+      "name": "1. Login con Google",
+      "description": "Flujo OAuth 2.0 completo. Empieza aquí.",
       "item": [
         {
-          "name": "GET /login  (abrir en navegador)",
+          "name": "GET /login  ⚠️ Abrir en navegador",
           "request": {
             "method": "GET",
             "header": [],
@@ -32,7 +39,7 @@
               "host": ["{{base_url}}"],
               "path": ["login"]
             },
-            "description": "Abre http://localhost:5000/login en el navegador.\n\nEl servidor genera un `state` aleatorio (proteccion CSRF) y redirige a Google. Tras el login, Google vuelve al callback, se intercambia el code por tokens (server-to-server con client_secret), se verifica la firma del id_token y se emite la cookie de sesion Flask."
+            "description": "⚠️ NO ejecutar desde Postman — el flujo OAuth requiere redirecciones que Postman no maneja bien.\n\n**Pasos:**\n1. Abre http://localhost:5000/login en el **navegador**\n2. Autoriza el acceso con tu cuenta Google\n3. El servidor genera un `state` aleatorio (protección CSRF) y redirige a Google\n4. Al volver al callback, se intercambia el `code` por tokens (server-to-server con `client_secret`)\n5. Se valida la firma del `id_token` con las claves públicas de Google (JWKS)\n6. Se guarda el `refresh_token` en la DB y se emite una cookie de sesión Flask\n\n**Después del login:** copia la cookie `session` de DevTools a Postman."
           },
           "response": []
         },
@@ -60,7 +67,7 @@
               "host": ["{{base_url}}"],
               "path": ["dev", "login"]
             },
-            "description": "Crea sesion directamente sin pasar por Google. Solo disponible con debug=True.\n\nEl usuario debe existir en la DB (haber hecho login real al menos una vez).\n\nRespuesta (200):\n```json\n{\"message\": \"ok\", \"user_id\": 1, \"email\": \"tu@gmail.com\"}\n```"
+            "description": "Crea una sesión Flask directamente sin pasar por Google. Solo disponible cuando el servidor corre con `debug=True`.\n\n**Requisito:** el usuario ya debe existir en la DB (haber hecho login real al menos una vez).\n\nRespuesta esperada (200):\n```json\n{\n  \"message\": \"ok\",\n  \"user_id\": 1,\n  \"email\": \"tu@gmail.com\"\n}\n```\n\nSin usuario en DB → 404.\nEn producción (`debug=False`) → 404."
           },
           "response": []
         },
@@ -74,7 +81,21 @@
               "host": ["{{base_url}}"],
               "path": ["me"]
             },
-            "description": "Devuelve el perfil del usuario con sesion activa.\n\nRespuesta (200):\n```json\n{\n  \"id\": 1,\n  \"email\": \"tu@gmail.com\",\n  \"name\": \"Tu Nombre\",\n  \"picture\": \"https://...\"\n}\n```\n\nSin sesion -> 401."
+            "description": "Devuelve el perfil del usuario cuya sesión está activa.\n\nRespuesta esperada (200):\n```json\n{\n  \"id\": 1,\n  \"email\": \"tu@gmail.com\",\n  \"name\": \"Tu Nombre\",\n  \"picture\": \"https://lh3.googleusercontent.com/...\"\n}\n```\n\nSin sesión → 401."
+          },
+          "response": []
+        },
+        {
+          "name": "POST /refresh - Renovar access token",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/refresh",
+              "host": ["{{base_url}}"],
+              "path": ["refresh"]
+            },
+            "description": "Usa el `refresh_token` almacenado en la DB para obtener un nuevo `access_token` de Google sin que el usuario tenga que volver a hacer login.\n\nRequiere sesión activa (cookie `session`).\n\nRespuesta esperada (200):\n```json\n{\n  \"access_token\": \"ya29.a0AX...\"\n}\n```\n\nSi no hay `refresh_token` en DB (login sin `access_type=offline`) → 401.\n\n**¿Cuándo usarlo?** Cuando llamas a APIs de Google (Drive, Calendar, etc.) y el access token de 1h ha expirado."
           },
           "response": []
         },
@@ -88,17 +109,86 @@
               "host": ["{{base_url}}"],
               "path": ["logout"]
             },
-            "description": "Limpia la sesion del servidor.\n\nRespuesta (200):\n```json\n{\"message\": \"logged out\"}\n```"
+            "description": "Limpia la sesión Flask del servidor.\n\nRespuesta esperada (200):\n```json\n{\"message\": \"logged out\"}\n```\n\n⚠️ Nota: esto invalida la sesión pero **no revoca** el JWT si ya fue emitido. Los JWTs siguen siendo válidos hasta su expiración (1h). Para revocar JWTs habría que mantener una blocklist en DB."
           },
           "response": []
         }
       ]
     },
     {
-      "name": "Notes",
+      "name": "2. JWT — Obtener y verificar token",
+      "description": "Intercambia la sesión activa por un JWT Bearer. Útil para clientes API, SPAs o apps móviles que no manejan cookies.",
       "item": [
         {
-          "name": "GET /api/notes - Listar notas",
+          "name": "POST /api/token - Emitir JWT  ★ auto-guarda token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const body = pm.response.json();",
+                  "    pm.collectionVariables.set('jwt_token', body.access_token);",
+                  "    console.log('JWT guardado en variable jwt_token');",
+                  "    pm.test('Token emitido correctamente', () => {",
+                  "        pm.expect(body).to.have.property('access_token');",
+                  "        pm.expect(body.token_type).to.equal('Bearer');",
+                  "        pm.expect(body.expires_in).to.equal(3600);",
+                  "    });",
+                  "} else {",
+                  "    pm.test('Requiere sesión activa', () => pm.response.to.have.status(401));",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/token",
+              "host": ["{{base_url}}"],
+              "path": ["api", "token"]
+            },
+            "description": "Intercambia la sesión Flask activa (cookie) por un JWT firmado con HS256.\n\nRequiere sesión activa. **El test script guarda el token en `{{jwt_token}}` automáticamente.**\n\nRespuesta esperada (200):\n```json\n{\n  \"access_token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\",\n  \"token_type\": \"Bearer\",\n  \"expires_in\": 3600\n}\n```\n\nEl JWT contiene:\n- `sub`: user_id\n- `iat`: emitido en (timestamp)\n- `exp`: expira en iat + 1h\n\nSin sesión → 401."
+          },
+          "response": []
+        },
+        {
+          "name": "GET /me con JWT  (verificar token)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}",
+                "description": "JWT obtenido de POST /api/token"
+              },
+              {
+                "key": "Cookie",
+                "value": "",
+                "disabled": true,
+                "description": "Deshabilitada para probar auth por JWT puro"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/me",
+              "host": ["{{base_url}}"],
+              "path": ["me"]
+            },
+            "description": "⚠️ Nota: `/me` usa sesión Flask, no acepta JWT. Este request verifica que el JWT fue emitido y sirve de referencia.\n\nPara verificar que el JWT es válido usa los endpoints de `/api/notes` de la carpeta siguiente — esos sí aceptan Bearer token."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "3. Notas (Sesión Cookie)",
+      "description": "Endpoints protegidos autenticados mediante la cookie de sesión Flask. Flujo típico de navegador.",
+      "item": [
+        {
+          "name": "GET /api/notes - Listar mis notas",
           "request": {
             "method": "GET",
             "header": [],
@@ -107,7 +197,7 @@
               "host": ["{{base_url}}"],
               "path": ["api", "notes"]
             },
-            "description": "Lista todas las notas del usuario autenticado. Solo ve sus propias notas.\n\nRespuesta (200):\n```json\n[\n  {\n    \"id\": 1,\n    \"title\": \"Comprar leche\",\n    \"body\": \"2L de avena\",\n    \"created_at\": \"2026-06-01T10:00:00\"\n  }\n]\n```\n\nSin sesion -> 401."
+            "description": "Lista todas las notas del usuario autenticado (solo las suyas).\n\nRespuesta esperada (200):\n```json\n[\n  {\n    \"id\": 1,\n    \"title\": \"Comprar leche\",\n    \"body\": \"2L de avena\",\n    \"created_at\": \"2026-06-01T10:00:00\"\n  }\n]\n```\n\nSin sesión → 401 con `login_url`.\n\n**Ownership check:** el filtro `WHERE user_id = session.user_id` garantiza que cada usuario solo ve sus propias notas."
           },
           "response": []
         },
@@ -122,6 +212,7 @@
                   "    const body = pm.response.json();",
                   "    pm.collectionVariables.set('note_id', body.id);",
                   "    console.log('note_id actualizado a', body.id);",
+                  "    pm.test('Nota creada con id', () => pm.expect(body.id).to.be.a('number'));",
                   "}"
                 ],
                 "type": "text/javascript"
@@ -150,12 +241,12 @@
               "host": ["{{base_url}}"],
               "path": ["api", "notes"]
             },
-            "description": "Crea una nota. `title` obligatorio, `body` opcional.\n\nEl test script guarda el `id` en {{note_id}} automaticamente.\n\nRespuesta (201):\n```json\n{\n  \"id\": 1,\n  \"title\": \"Comprar leche\",\n  \"body\": \"2L de avena\",\n  \"created_at\": \"2026-06-01T10:00:00\"\n}\n```"
+            "description": "Crea una nota. `title` es obligatorio, `body` es opcional.\n\nEl test script guarda el `id` de la nota creada en `{{note_id}}` automáticamente.\n\nRespuesta esperada (201):\n```json\n{\n  \"id\": 1,\n  \"title\": \"Comprar leche\",\n  \"body\": \"2L de avena\",\n  \"created_at\": \"2026-06-01T10:00:00\"\n}\n```\n\n**Rate limit:** máximo 30 req/min por IP. Al superarlo → 429 Too Many Requests."
           },
           "response": []
         },
         {
-          "name": "POST /api/notes - Sin title (400)",
+          "name": "POST /api/notes - Error: sin title (400)",
           "request": {
             "method": "POST",
             "header": [
@@ -166,7 +257,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"body\": \"Sin titulo, debe fallar con 400\"\n}",
+              "raw": "{\n  \"body\": \"Sin título, debe fallar con 400\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -178,7 +269,7 @@
               "host": ["{{base_url}}"],
               "path": ["api", "notes"]
             },
-            "description": "Demuestra validacion de input.\n\nRespuesta (400):\n```json\n{\"error\": \"title is required\"}\n```"
+            "description": "Demuestra validación de input. Debe devolver 400:\n```json\n{\"error\": \"title is required\"}\n```"
           },
           "response": []
         },
@@ -192,20 +283,25 @@
               "host": ["{{base_url}}"],
               "path": ["api", "notes", "{{note_id}}"]
             },
-            "description": "Borra la nota con el ID en {{note_id}}.\n\nRespuesta: 204 No Content.\n\nSi la nota no existe o es de otro usuario -> 404."
+            "description": "Borra la nota con el ID en `{{note_id}}` (se actualiza sola al crear una nota).\n\nRespuesta esperada: **204 No Content** (sin body).\n\nSi la nota no existe o pertenece a otro usuario → 404.\n\n**Ownership check:** `WHERE id = note_id AND user_id = session.user_id` — un usuario no puede borrar notas ajenas."
           },
           "response": []
-        },
+        }
+      ]
+    },
+    {
+      "name": "4. Notas (JWT Bearer)",
+      "description": "Los mismos endpoints pero autenticados con Authorization: Bearer <jwt_token>. Demuestra el modo stateless — sin cookies.",
+      "item": [
         {
-          "name": "GET /api/notes - Sin sesion (401)",
+          "name": "GET /api/notes - Listar notas (JWT)",
           "request": {
             "method": "GET",
             "header": [
               {
-                "key": "Cookie",
-                "value": "",
-                "disabled": true,
-                "description": "Cookie deshabilitada para simular usuario no autenticado"
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}",
+                "description": "Token obtenido de POST /api/token"
               }
             ],
             "url": {
@@ -213,7 +309,205 @@
               "host": ["{{base_url}}"],
               "path": ["api", "notes"]
             },
-            "description": "Deshabilita la cookie de sesion en Postman antes de ejecutar.\n\nRespuesta (401):\n```json\n{\n  \"error\": \"authentication required\",\n  \"login_url\": \"/login\"\n}\n```"
+            "description": "Mismo endpoint que la carpeta anterior pero sin cookie — solo el header `Authorization: Bearer`.\n\nEl decorador `login_required` intenta primero el Bearer JWT; si no existe, cae en sesión Flask.\n\nRespuesta esperada (200): lista de notas del usuario.\n\nJWT expirado → 401 `{\"error\": \"token expired\"}`\nJWT inválido → 401 `{\"error\": \"invalid token\"}`"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /api/notes - Crear nota (JWT)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const body = pm.response.json();",
+                  "    pm.collectionVariables.set('note_id', body.id);",
+                  "    pm.test('Nota creada via JWT', () => pm.expect(body.id).to.be.a('number'));",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Nota creada con JWT\",\n  \"body\": \"Sin cookies, solo Bearer token\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/notes",
+              "host": ["{{base_url}}"],
+              "path": ["api", "notes"]
+            },
+            "description": "Crea una nota usando JWT en lugar de cookie de sesión.\n\nIdeal para demostrar el modo stateless: el servidor no necesita memoria de sesiones — toda la identidad del usuario viaja en el token firmado."
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /api/notes/:id - Borrar nota (JWT)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/notes/{{note_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "notes", "{{note_id}}"]
+            },
+            "description": "Borra la nota identificada por `{{note_id}}` autenticando con JWT.\n\nRespuesta esperada: **204 No Content**.\n\nSi la nota no existe o es de otro usuario → 404."
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/notes - JWT inválido (401)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer token.falso.aqui",
+                "description": "Token intencionalmente inválido"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/notes",
+              "host": ["{{base_url}}"],
+              "path": ["api", "notes"]
+            },
+            "description": "Demuestra el rechazo de JWTs inválidos.\n\nRespuesta esperada (401):\n```json\n{\"error\": \"invalid token\"}\n```\n\nEsto ocurre porque `jwt.decode()` no puede verificar la firma con la `SECRET_KEY` de la app."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "5. Admin (RBAC)",
+      "description": "Endpoint exclusivo para usuarios con rol 'admin'. Demuestra Role-Based Access Control.",
+      "item": [
+        {
+          "name": "GET /api/admin/notes - Todas las notas (admin)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/admin/notes",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "notes"]
+            },
+            "description": "Lista **todas** las notas de **todos** los usuarios. Solo accesible con rol `admin`.\n\nRespuesta esperada (200) si eres admin:\n```json\n[\n  {\n    \"id\": 1,\n    \"title\": \"Nota de otro usuario\",\n    \"body\": \"...\",\n    \"created_at\": \"...\",\n    \"owner_email\": \"otro@gmail.com\"\n  }\n]\n```\n\nSin sesión → 401\nCon sesión pero rol `user` → **403 Forbidden**:\n```json\n{\n  \"error\": \"forbidden\",\n  \"required_role\": [\"admin\"]\n}\n```\n\n**Cómo asignar rol admin** (Flask shell con el servidor parado):\n```python\nfrom app.models import User, Role\nfrom app.extensions import db\nu = User.query.filter_by(email='tu@gmail.com').first()\nu.role = Role.admin\ndb.session.commit()\n```"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/admin/notes con JWT admin",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}",
+                "description": "JWT de un usuario con rol admin"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/notes",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "notes"]
+            },
+            "description": "Mismo endpoint admin pero autenticado con Bearer JWT en lugar de sesión.\n\nDemuestra que `@login_required` + `@roles_required(Role.admin)` funciona igual con ambos métodos de autenticación."
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/admin/notes - Sin rol admin (403)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}",
+                "description": "JWT de usuario normal (rol 'user')"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/notes",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "notes"]
+            },
+            "description": "Ejecuta este request con el JWT de un usuario normal (rol `user`).\n\nRespuesta esperada (403):\n```json\n{\n  \"error\": \"forbidden\",\n  \"required_role\": [\"admin\"]\n}\n```\n\nDemuestra que autenticación ≠ autorización: el usuario está correctamente identificado pero no tiene permisos."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "6. Rate Limiting",
+      "description": "Demuestra los límites de frecuencia activos en la API.",
+      "item": [
+        {
+          "name": "GET /api/notes - Sin autenticación (401)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/notes",
+              "host": ["{{base_url}}"],
+              "path": ["api", "notes"]
+            },
+            "description": "Request sin cookie ni JWT. Demuestra el 401 base.\n\nRespuesta esperada (401):\n```json\n{\n  \"error\": \"authentication required\",\n  \"login_url\": \"/login\"\n}\n```"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /api/notes - Rate limit (429)  ⚠️ ejecutar 31 veces",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Test rate limit\",\n  \"body\": \"Este request fallará con 429 al ejecutarse más de 30 veces por minuto\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/notes",
+              "host": ["{{base_url}}"],
+              "path": ["api", "notes"]
+            },
+            "description": "El endpoint `POST /api/notes` tiene un límite de **30 req/min por IP**.\n\nPara ver el 429: usa **Runner** de Postman → selecciona este request → configura 35 iteraciones sin delay.\n\nRespuesta esperada al superar el límite (429):\n```\n429 Too Many Requests\n```\n\nLos headers de respuesta incluirán:\n- `X-RateLimit-Limit`: límite configurado\n- `X-RateLimit-Remaining`: requests restantes\n- `Retry-After`: segundos hasta que se resetea"
           },
           "response": []
         }
